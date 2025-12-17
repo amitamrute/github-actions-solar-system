@@ -82,12 +82,20 @@ jobs:
     needs: docker
     environment: 
       name: development
+    outputs:
+      APP_INGRESS_HOST: ${{ steps.set-ingress-host.outputs.APP_INGRESS_HOST }}
     steps:
       - name: install cluster
         uses: helm/kind-action@v1
+
+      - name: Determine Ingress Host
+        id: set-ingress-host
+        run: |
+          HOST=$(kubectl -n ${{ vars.NAMESPACE }} \
+            get ingress -o jsonpath='{.items[0].spec.tls[0].hosts[0]}')
+          echo "APP_INGRESS_HOST=$HOST" >> $GITHUB_OUTPUT
       
       - run: |
-          sleep 60
           kubectl -n kube-system get pod
           set +e
           REPO_OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
@@ -104,5 +112,5 @@ jobs:
     needs: dev-deploy
     uses: ./.github/workflows/reusable-workflow.yml
     with:
-      ingress-url: ${{ needs.dev-deploy.outputs.APP_INGRESS_URL }}
+      ingress-url: ${{ needs.dev-deploy.outputs.APP_INGRESS_HOST }}
     
